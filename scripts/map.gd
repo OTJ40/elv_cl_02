@@ -72,9 +72,10 @@ func has_point_in_for_sale_lands(point: Vector2i) -> bool:
 	return false
 
 
-func get_rect_for_sale(point: Vector2i):
+func get_base_pos_of_rect_for_sale(point: Vector2i):
 	for pos in for_sale_lands_array:
 		if Rect2i(pos,Vector2i(5,5)).has_point(point):
+#			print(pos,222)
 			return pos
 
 func _set_build_state(_type,_pos):
@@ -145,8 +146,7 @@ func get_atlas_positions_array(atlas,base) -> Array:
 	return result
 
 
-func selling_building():
-	pass
+
 
 
 func place_building():
@@ -262,12 +262,39 @@ func show_lands_for_sale():
 		ui.set_lands_for_sale_preview("expansion",cell * 32)
 
 
+func selling_building():
+	var current_tile = $Buildings.local_to_map(get_global_mouse_position())
+	if $Buildings.get_cell_source_id(0, current_tile) == BuildingType.MAIN_HALL:
+				print("You can`t!")
+	else:
+		if $Buildings.get_used_cells(0).has(current_tile):
+			for item in buildings_data_array:
+				for cell in item["atlas"]:
+					if current_tile == cell + item["base"]:
+#						print(item["type"],BuildingType[item["type"]])
+						ui.show_sell_dialog(item)
+
+
+func erase_building(btn_name, dict):
+	print(dict)
+	if btn_name == "Yes":
+		buildings_data_array.erase(dict)
+		# if road for every neighbor find roadtree and check for connection to mh
+		file_manager.save_to_file("buildings_data", buildings_data_array)
+		for cell in dict["atlas"]:
+			$Buildings.erase_cell(0, cell + dict["base"])
+#		update_map()
+		ui.desactivate_dialog_btns()
+	elif btn_name == "No":
+		ui.desactivate_dialog_btns()
+
+
+
 func choose_expansion_land():
 	var current_tile = $Buildings.local_to_map(get_global_mouse_position())
 	if has_point_in_for_sale_lands(current_tile):
-		var rect_for_sale = get_rect_for_sale(current_tile)
-#		print(rect_for_sale)
-		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
+		var rect_pos_for_sale = get_base_pos_of_rect_for_sale(current_tile)
+		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_pos_for_sale)
 
 func buy_expansion(btn_name, dict):
 #	print(dict)
@@ -291,15 +318,11 @@ func move_or_expanse():
 	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
 #	var cell_pos = Vector2i($Buildings.map_to_local(current_cell))
 	if $Buildings.get_used_cells(0).has(current_cell): # move
-#		print(current_cell)
 		pass
 	elif has_point_in_for_sale_lands(current_cell):
 		move_and_expanse = true
-		var rect_for_sale = get_rect_for_sale(current_cell)
-#		print(rect_for_sale)
+		var rect_for_sale = get_base_pos_of_rect_for_sale(current_cell)
 		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
-		# ispravit buy expansion
-#		choose_expansion_land()
 		Globals.state = State.EXPANSE
 		
 

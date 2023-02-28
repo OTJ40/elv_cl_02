@@ -30,6 +30,7 @@ func _process(_delta: float) -> void:
 		$Map.update_building_preview()
 
 func _unhandled_input(event: InputEvent) -> void:
+	
 	if Globals.state == State.BUILD:
 		if event.is_action_released("ui_accept"):
 			$Map.place_building()
@@ -52,9 +53,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			Globals.has_lands_preview = true
 		if event.is_action_released("ui_accept"):
 			$Map.move_or_expanse()
+	
 	if Globals.state == State.SELL:
 		if event.is_action_released("ui_accept"):
-			$Map.selling_building()
+			if !Globals.has_painted_building:
+				$Map.selling_building()
 
 
 

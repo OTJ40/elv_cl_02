@@ -31,13 +31,21 @@ func update_building_preview(new_pos, color):
 	get_node("BuildingPreview").position = new_pos
 	get_node("BuildingPreview/BuildingInstance").modulate = Color(color)
 
-func show_expansion_dialog(array,rect):
+func show_sell_dialog(dict):
+	$HUD/Dialog/VBoxContainer/Label.text = "Sell "+ dict["type"]+"?"
+	paint_building(dict["atlas"],dict["base"],Color(1,0,0,0.7))
+	modulate_ui(Color(1,1,1,0.4))
+	get_node("HUD/Dialog").visible = true
+	var callable = Callable(map_node,"erase_building")
+	get_node("HUD").connect_dialog_buttons(dict,callable)
+
+func show_expansion_dialog(array,rect_pos):
 	$HUD/Dialog/VBoxContainer/Label.text = "Buy Expansion?"
-	paint_building(array,rect,Color(0,0,1,0.5))
+	paint_building(array,rect_pos,Color(0,0,1,0.5))
 	modulate_ui(Color(1,1,1,0.4))
 	get_node("HUD/Dialog").visible = true
 	var callable = Callable(map_node,"buy_expansion")
-	get_node("HUD").connect_dialog_buttons({"position": rect},callable)
+	get_node("HUD").connect_dialog_buttons({"position": rect_pos},callable)
 
 func modulate_ui(c):
 #	var c = Color(1,1,1,0.4)
@@ -56,8 +64,8 @@ func desactivate_dialog_btns():
 		Globals.has_painted_building = false
 
 	var c = null
-#	if sell_mode:
-#		c = Callable(self,"selling_building")
+	if Globals.state == State.SELL:
+		c = Callable(map_node,"erase_building")
 	if Globals.state == State.EXPANSE:
 		c = Callable(map_node,"buy_expansion")
 
