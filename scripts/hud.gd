@@ -28,17 +28,18 @@ func init_menu_mode(btn):
 			$Menu.visible = false
 			$DoneButton.visible = true
 			
-#		"SellButton":
-#			DisplayServer.cursor_set_custom_image(sell_cursor)
-#			sell_mode = true
-#			menu.visible = false
-#			done_btn.visible = true
-#		"MoveButton":
-#			move_mode = true
-#			$Mesh.visible = true
-#			DisplayServer.cursor_set_custom_image(move_cursor)
-#			menu.visible = false
-#			done_btn.visible = true
+		"MoveButton":
+			Globals.state = State.MOVE
+			$DoneButton.visible = true
+			$Menu.visible = false
+			DisplayServer.cursor_set_custom_image(move_cursor)
+			
+		"SellButton":
+			Globals.state = State.SELL
+			$DoneButton.visible = true
+			$Menu.visible = false
+			DisplayServer.cursor_set_custom_image(sell_cursor)
+			
 		"ResearchButton":
 			pass
 		"WorldMapButton":

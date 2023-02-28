@@ -25,14 +25,13 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-#	print(Globals.state)
+#	print(Globals.state,Globals.has_lands_preview,Globals.has_painted_building)
 	if Globals.state == State.BUILD:
 		$Map.update_building_preview()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if Globals.state == State.BUILD:
 		if event.is_action_released("ui_accept"):
-#			prepare_to_place_dict()
 			$Map.place_building()
 			if build_type != "Road":
 				cancel_build_mode()
@@ -40,13 +39,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_released("ui_cancel"):
 			cancel_build_mode()
 			$Map/Base.modulate = Color(1,1,1,1)
+	
 	if Globals.state == State.EXPANSE:
 		if event.is_action_released("ui_accept"):
 			if !Globals.has_painted_building:
 				$Map.choose_expansion_land()
-
-
-
+	
+	if Globals.state == State.MOVE:
+#		Globals.has_painted_building = true
+		if !Globals.has_lands_preview:
+			$Map.show_lands_for_sale()
+			Globals.has_lands_preview = true
+		if event.is_action_released("ui_accept"):
+			$Map.move_or_expanse()
+	if Globals.state == State.SELL:
+		if event.is_action_released("ui_accept"):
+			$Map.selling_building()
 
 
 
@@ -66,8 +74,6 @@ func _set_build_type(_type,_pos):
 #	$Map/Cells.visible = true
 
 
-#func cell_legal_to_place(cell: Vector2i) -> bool:
-#	return $Map/Land.get_used_cells(0).has(cell) and $Map/Land.get_cell_source_id(0, cell) == 0
 
 
 func load_config():

@@ -3,7 +3,9 @@ extends Node
 enum {
 	GAME,
 	BUILD,
-	EXPANSE
+	EXPANSE,
+	SELL,
+	MOVE
 }
 
 #var state

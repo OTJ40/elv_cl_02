@@ -17,6 +17,7 @@ var build_type: String
 var build_location: Vector2i
 var place_valid: bool
 var ui
+var move_and_expanse = false
 
 
 
@@ -61,12 +62,7 @@ func get_neighbors_for_position(pos) -> Array:
 	return result
 
 
-func choose_expansion_land():
-	var current_tile = $Buildings.local_to_map(get_global_mouse_position())
-	if has_point_in_for_sale_lands(current_tile):
-		var rect_for_sale = get_rect_for_sale(current_tile)
-		print(rect_for_sale)
-		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
+
 #
 
 func has_point_in_for_sale_lands(point: Vector2i) -> bool:
@@ -147,6 +143,10 @@ func get_atlas_positions_array(atlas,base) -> Array:
 	for cell in atlas:
 		result.append(cell + base)
 	return result
+
+
+func selling_building():
+	pass
 
 
 func place_building():
@@ -262,9 +262,16 @@ func show_lands_for_sale():
 		ui.set_lands_for_sale_preview("expansion",cell * 32)
 
 
+func choose_expansion_land():
+	var current_tile = $Buildings.local_to_map(get_global_mouse_position())
+	if has_point_in_for_sale_lands(current_tile):
+		var rect_for_sale = get_rect_for_sale(current_tile)
+#		print(rect_for_sale)
+		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
+
 func buy_expansion(btn_name, dict):
+#	print(dict)
 	if btn_name == "Yes":
-		print(dict)
 		$Land.set_pattern(0, dict["position"], $Land.tile_set.get_pattern(0))
 		own_lands_array.append(dict["position"])
 		file_manager.save_to_file("lands_data", own_lands_array)
@@ -275,6 +282,26 @@ func buy_expansion(btn_name, dict):
 		ui.desactivate_dialog_btns()
 	elif btn_name == "No":
 		ui.desactivate_dialog_btns()
+		if move_and_expanse:
+			Globals.state = State.MOVE
+			move_and_expanse = false
+
+
+func move_or_expanse():
+	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
+#	var cell_pos = Vector2i($Buildings.map_to_local(current_cell))
+	if $Buildings.get_used_cells(0).has(current_cell): # move
+#		print(current_cell)
+		pass
+	elif has_point_in_for_sale_lands(current_cell):
+		move_and_expanse = true
+		var rect_for_sale = get_rect_for_sale(current_cell)
+#		print(rect_for_sale)
+		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
+		# ispravit buy expansion
+#		choose_expansion_land()
+		Globals.state = State.EXPANSE
+		
 
 
 func load_from_buildings_data_file():
