@@ -34,7 +34,7 @@ func update_building_preview(new_pos, color):
 func show_sell_dialog(dict):
 	$HUD/Dialog/VBoxContainer/Label.text = "Sell "+ dict["type"]+"?"
 	paint_building(dict["atlas"],dict["base"],Color(1,0,0,0.7))
-	modulate_ui(Color(1,1,1,0.4))
+	modulate_ui(Color(1,1,1,0.3))
 	get_node("HUD/Dialog").visible = true
 	var callable = Callable(map_node,"erase_building")
 	get_node("HUD").connect_dialog_buttons(dict,callable)

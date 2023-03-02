@@ -17,44 +17,15 @@ var build_type: String
 var build_location: Vector2i
 var place_valid: bool
 var ui
-#var move_and_expanse = false
-
+var item_to_move = {}
 
 
 func _ready() -> void:
 	ui = get_parent().get_node("UI")
 	SignalBus.build_mode_activated.connect(_set_build_state)
 
-func _process(delta: float) -> void:
-	print(place_valid)
-
-
-func update_building_preview():
-	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
-	var cell_pos = Vector2i($Buildings.map_to_local(current_cell))
-	if build_type != "Road":
-		var atlas = _get_atlas_array($Buildings.tile_set.get_source(BuildingType[build_type.to_upper()]))
-		var count_free = 0
-		for cell in atlas:
-			if $Buildings.get_cell_source_id(0,current_cell + cell) == -1 and cell_legal_to_place(current_cell + cell):
-				count_free += 1
-		if count_free == atlas.size():
-			ui.update_building_preview(cell_pos,"33fd146b")
-			place_valid = true
-			build_location = cell_pos
-		else:
-			ui.update_building_preview(cell_pos,"f600039c")
-			place_valid = false
-	else:
-		if $Buildings.get_cell_source_id(0, current_cell) == -1 and cell_legal_to_place(current_cell):
-			ui.update_building_preview(cell_pos,"33fd146b")
-			place_valid = true
-			build_location = cell_pos
-		else:
-			ui.update_building_preview(cell_pos,"f600039c")
-			place_valid = false
-
-
+#func _process(delta: float) -> void:
+#	print(place_valid)
 
 
 func get_neighbors_for_position(pos) -> Array:
@@ -82,7 +53,6 @@ func get_base_pos_of_rect_for_sale(point: Vector2i):
 
 func _set_build_state(_type,_pos):
 	build_type = _type
-#	Globals.state = State.BUILD
 #	print(build_type)
 	$Cells.visible = true
 	$Base.modulate = Color(1,1,1,0.5)
@@ -147,72 +117,144 @@ func get_atlas_positions_array(atlas,base) -> Array:
 		result.append(cell + base)
 	return result
 
+func update_building_preview():
+	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
+	var current_cell_in_px = Vector2i($Buildings.map_to_local(current_cell))
+	var atlas = _get_atlas_array($Buildings.tile_set.get_source(BuildingType[build_type.to_upper()])) if build_type != "Road" else [Vector2i(0,0)]
+	var counter = 0
+	for cell in atlas:
+		if $Buildings.get_cell_source_id(0,current_cell + cell) == -1 and cell_legal_to_place(current_cell + cell):
+			counter += 1
+	if counter == atlas.size():
+		ui.update_building_preview(current_cell_in_px,"33fd146b")
+		place_valid = true
+		build_location = current_cell
+	else:
+		ui.update_building_preview(current_cell_in_px,"f600039c")
+		place_valid = false
 
 
+func find_connected_to_place_b(building_atlas):
+	var connected: bool
+	if build_type == "Road":
+		connected = is_connected_R_for_position(build_location)
+		if connected:
+			change_connected_in_updated_road_tree(build_location,connected)
+	else:
+		for atlas_cell in get_atlas_positions_array(building_atlas,build_location):
+			for n in get_neighbors_for_position(atlas_cell):
+				if get_atlas_positions_array(building_atlas,build_location).has(n):
+					continue
+				else:
+					if get_type_from_buildings_data_array(n) == "Road": # if building has neighbor road
+						if is_connected_R_for_position(n):              # and it is connected to mh
+							connected = true                            # then building is connected
+		if !connected:
+			connected = false
+	return connected
 
 
 func place_building():
 	if place_valid:
-		var dict = {}
-		var building_atlas = [Vector2i(0,0)] if build_type == "Road" else _get_atlas_array($Buildings.tile_set.get_source(BuildingType[build_type.to_upper()]))
-		
-		var connected
-		if build_type == "Road":
-			connected = get_connected_R_for_position(Vector2i(build_location)/32)
-			# if move maybe connected not true???
-			if connected:
-				change_connected_in_updated_road_tree(Vector2i(build_location)/32,connected)
-		else:
-			for cell in get_atlas_positions_array(building_atlas,Vector2i(build_location)/32):
-				for n in get_neighbors_for_position(cell):
-					if get_atlas_positions_array(building_atlas,Vector2i(build_location)/32).has(n):
-						continue
+		if Globals.build_mode:
+			# -1- prepare dictionary
+			var dict = {}
+			var building_atlas = [Vector2i(0,0)] if build_type == "Road" else _get_atlas_array($Buildings.tile_set.get_source(BuildingType[build_type.to_upper()]))
+			var connected = find_connected_to_place_b(building_atlas)
+			dict = {
+					"id": str(Time.get_unix_time_from_system()).split(".")[0],
+					"type": build_type,
+					"base": build_location,
+					"level": 1,
+					"atlas": building_atlas,
+					"connected": connected,
+					"last_coll": str(0) if build_type == "Road" else str(Time.get_unix_time_from_system()).split(".")[0]
+				}
+			# -2- place building
+			if build_type == "Road":
+				$Buildings.set_cells_terrain_connect(0,[build_location],0,0,false)
+			else:
+				for cell in get_atlas_positions_array(building_atlas,build_location):
+					if connected:
+						$Buildings.set_cell(0,cell,BuildingType[build_type.to_upper()],Vector2i(0,0)+cell)
 					else:
-						if get_type_from_buildings_data_array(n) == "Road":
-							if get_connected_R_for_position(n):
-								connected = true
-			if !connected:
-				connected = false
-
-		dict = {
-				"id": str(Time.get_unix_time_from_system()).split(".")[0],
-				"type": build_type,
-				"base": Vector2i(build_location)/32,
-				"level": 1,
-				"atlas": building_atlas,
-				"connected": connected,
-				"last_coll": str(0) if build_type == "Road" else str(Time.get_unix_time_from_system()).split(".")[0]
-			}
-		if build_type == "Road":
-			$Buildings.set_cells_terrain_connect(0,[Vector2i(build_location)/32],0,0,false)
-		else:
-			for cell in building_atlas:
-				if connected:
-					$Buildings.set_cell(0,Vector2i(build_location)/32+cell,BuildingType[build_type.to_upper()],Vector2i(0,0)+cell)
-				else:
-					$Buildings.set_cell(0,Vector2i(build_location)/32+cell,BuildingType[build_type.to_upper()]+2,Vector2i(0,0)+cell)
-					
-		buildings_data_array.append(dict)
-		file_manager.save_to_file("buildings_data", buildings_data_array)
+						$Buildings.set_cell(0,cell,BuildingType[build_type.to_upper()]+2,Vector2i(0,0)+cell)
+						
+			# -3- save changes
+			buildings_data_array.append(dict)
+			file_manager.save_to_file("buildings_data", buildings_data_array)
 		if Globals.drag_mode:
+			# -1- prepare dictionary
+			var dict = {}
+			var building_atlas = [Vector2i(0,0)] if build_type == "Road" else _get_atlas_array($Buildings.tile_set.get_source(BuildingType[build_type.to_upper()]))
+			var connected = find_connected_to_place_b(building_atlas)
+			if build_type == "Main_Hall":
+				connected = true
+			dict = {
+					"id": item_to_move["id"],
+					"type": build_type,
+					"base": build_location,
+					"level": item_to_move["level"],
+					"atlas": building_atlas,
+					"connected": connected,
+					"last_coll": item_to_move["last_coll"]
+				}
+			# -2- place building
+			if build_type == "Road":
+				$Buildings.set_cells_terrain_connect(0,[build_location],0,0,false)
+			else:
+				for atlas_cell in get_atlas_positions_array(building_atlas,build_location):
+					if connected:
+						$Buildings.set_cell(0,atlas_cell,BuildingType[build_type.to_upper()],Vector2i(0,0) + atlas_cell)
+					else:
+						$Buildings.set_cell(0,atlas_cell,BuildingType[build_type.to_upper()]+2,Vector2i(0,0) + atlas_cell)
+			# -3- save changes
+			buildings_data_array.append(dict)
+			file_manager.save_to_file("buildings_data", buildings_data_array)
+			
 			place_valid = false
 			get_parent().cancel_drag_mode()
+		update_map()
 
+
+func move_or_expanse():
+	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
+	if $Buildings.get_used_cells(0).has(current_cell): # move
+		
+		for item in buildings_data_array:
+			for atlas_cell in get_atlas_positions_array(item["atlas"],item["base"]):
+				if current_cell == atlas_cell:
+					item_to_move = item
+					Globals.move_mode = false
+					Globals.drag_mode = true
+					ui.paint_building(item["atlas"],item["base"],Color(0,0,1,0.5))
+					erase_building("Yes", item)
+					ui._set_building_preview(item["type"],get_global_mouse_position())
+					build_type = item["type"]
+					$Cells.visible = true
+		
+	elif has_point_in_for_sale_lands(current_cell):
+		Globals.expanse_mode = true
+		var rect_for_sale = get_base_pos_of_rect_for_sale(current_cell)
+		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
 
 func change_connected_in_updated_road_tree(pos, bull):
 	var road_tree = [pos]
 	recursive_collecting_roads(pos, road_tree)
 	for road in road_tree:
-		check_neighbor_buildings(road, bull)
+		# buildings
+		check_neighbor_buildings_to_road_pos(road, bull)
+		
+		# roads
 		for item in buildings_data_array:
 			if road == item["base"]:
 				item["connected"] = bull
 
 	file_manager.save_to_file("buildings_data",buildings_data_array)
-	update_map()
+#	update_map()
 
 
-func check_neighbor_buildings(pos, bull):
+func check_neighbor_buildings_to_road_pos(pos, bull):
 	for n in get_neighbors_for_position(pos):
 		if building_type_not_road_or_main_hall(n):
 			change_connected_in_buildings_data_array(n,bull)
@@ -225,10 +267,9 @@ func change_connected_in_buildings_data_array(pos,bull):
 				item["connected"] = bull
 
 
-func get_connected_R_for_position(pos) -> bool:
+func is_connected_R_for_position(pos) -> bool:
 	var road_tree = [pos]
 	recursive_collecting_roads(pos, road_tree)
-#	print(road_tree)
 	for road in road_tree:
 		for n in get_neighbors_for_position(road):
 			if get_type_from_buildings_data_array(n) == "Main_Hall":
@@ -285,8 +326,9 @@ func erase_building(btn_name, dict):
 		if dict["type"] == "Road":
 			for n in get_neighbors_for_position(dict["base"]):
 				if $Buildings.get_cell_source_id(0,n) == BuildingType.ROAD:
-					if !get_connected_R_for_position(n):
+					if !is_connected_R_for_position(n):
 						change_connected_in_updated_road_tree(n, false)
+						# NB - here check ALL neighbors to all neighbor buildings!!!
 				elif building_type_not_road_or_main_hall(n):
 					var building_dict = get_item_from_buildings_data_array_by_position(n)
 					building_dict["connected"] = false
@@ -296,7 +338,7 @@ func erase_building(btn_name, dict):
 								continue
 							else:
 								if get_type_from_buildings_data_array(nei) == "Road":
-									if get_connected_R_for_position(nei):
+									if is_connected_R_for_position(nei):
 										building_dict["connected"] = true
 					if !building_dict["connected"]:
 						building_dict["connected"] = false
@@ -338,44 +380,6 @@ func buy_expansion(btn_name, dict):
 		ui.desactivate_dialog_btns()
 	elif btn_name == "No":
 		ui.desactivate_dialog_btns()
-#		if move_and_expanse:
-#			Globals.state = State.MOVE
-#			move_and_expanse = false
-
-
-func move_or_expanse():
-	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
-#	var cell_pos = Vector2i($Buildings.map_to_local(current_cell))
-	if $Buildings.get_used_cells(0).has(current_cell): # move
-		if $Buildings.get_cell_source_id(0, current_cell) == BuildingType.ROAD:
-			for item in buildings_data_array:
-				if current_cell == item["base"]:
-#					Globals.move_mode = false
-					Globals.drag_mode = true
-#					print(Globals.drag_mode)
-					ui._set_building_preview(item["type"],get_global_mouse_position())
-					erase_building("Yes",item)
-					build_type = item["type"]
-#					print(Globals.state)
-		else:
-			for item in buildings_data_array:
-				for cell in get_atlas_positions_array(item["atlas"],item["base"]):
-					if current_cell == cell:
-						Globals.drag_mode = true
-						ui.paint_building(item["atlas"],item["base"],Color(0,0,1,0.5))
-						erase_building("Yes", item)
-						ui._set_building_preview(item["type"],get_global_mouse_position())
-						build_type = item["type"]
-						$Cells.visible = true
-						
-						
-						
-	elif has_point_in_for_sale_lands(current_cell):
-#		move_and_expanse = true
-		Globals.expanse_mode = true
-		var rect_for_sale = get_base_pos_of_rect_for_sale(current_cell)
-		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
-		
 
 
 

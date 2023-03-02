@@ -29,7 +29,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 #	print(Globals.state,Globals.has_lands_preview,Globals.has_painted_building)
-	print(Globals.build_mode,Globals.move_mode,Globals.drag_mode,Globals.expanse_mode)
+#	print(Globals.build_mode,Globals.move_mode,Globals.drag_mode,Globals.expanse_mode)
 	if Globals.build_mode or Globals.drag_mode:
 		$Map.update_building_preview()
 
@@ -71,7 +71,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				$Map.selling_building()
 
 func cancel_drag_mode():
-#	place_valid = false
 	Globals.drag_mode = false
 	Globals.move_mode = true
 	$Map/Cells.visible = false

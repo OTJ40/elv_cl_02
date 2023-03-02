@@ -86,12 +86,13 @@ func _on_done_button_pressed() -> void:
 	get_parent().modulate_ui(Color(1,1,1,1))
 	Globals.has_painted_building = false
 	get_parent().get_parent().get_node("Map/Cells").visible = false
-#	Globals.state = State.GAME
+	
 	Globals.build_mode = false
 	Globals.sell_mode = false
 	Globals.move_mode = false
 	Globals.drag_mode = false
 	Globals.expanse_mode = false
+	
 	DisplayServer.cursor_set_custom_image(default_cursor)
 	$BuildButtons.visible = false
 	$Menu.visible = true
