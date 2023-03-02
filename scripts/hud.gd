@@ -29,13 +29,13 @@ func init_menu_mode(btn):
 			$DoneButton.visible = true
 			
 		"MoveButton":
-			Globals.state = State.MOVE
+			Globals.move_mode = true
 			$DoneButton.visible = true
 			$Menu.visible = false
 			DisplayServer.cursor_set_custom_image(move_cursor)
 			
 		"SellButton":
-			Globals.state = State.SELL
+			Globals.sell_mode = true
 			$DoneButton.visible = true
 			$Menu.visible = false
 			DisplayServer.cursor_set_custom_image(sell_cursor)
@@ -51,15 +51,16 @@ func init_menu_mode(btn):
 func init_build_mode(type):
 	$BuildButtons.visible = false
 	$DoneButton.visible = false
+	Globals.build_mode = true
 	if type.name != "Expansion":
-		Globals.state = State.BUILD
 		SignalBus.build_mode_activated.emit(type.name, get_global_mouse_position())
 #		get_parent().set_building_preview(type.name, get_global_mouse_position())
 	else:
 		get_parent().get_parent().get_node("Map").show_lands_for_sale()
 		Globals.has_lands_preview = true
 		$DoneButton.visible = true
-		Globals.state = State.EXPANSE
+		Globals.build_mode = false
+		Globals.expanse_mode = true
 
 
 func connect_dialog_buttons(b_dict,func_name):
@@ -85,7 +86,12 @@ func _on_done_button_pressed() -> void:
 	get_parent().modulate_ui(Color(1,1,1,1))
 	Globals.has_painted_building = false
 	get_parent().get_parent().get_node("Map/Cells").visible = false
-	Globals.state = State.GAME
+#	Globals.state = State.GAME
+	Globals.build_mode = false
+	Globals.sell_mode = false
+	Globals.move_mode = false
+	Globals.drag_mode = false
+	Globals.expanse_mode = false
 	DisplayServer.cursor_set_custom_image(default_cursor)
 	$BuildButtons.visible = false
 	$Menu.visible = true

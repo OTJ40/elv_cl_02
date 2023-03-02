@@ -24,7 +24,7 @@ func set_lands_for_sale_preview(build_type, preview_position):
 	control.add_child(building_instance,true)
 	control.position = preview_position
 	control.name = "LandPreview"
-	$LandPreviews.add_child(control, true) # ?
+	$LandPreviews.add_child(control, true)
 #	move_child(get_node("LandPreview"), 0)
 
 func update_building_preview(new_pos, color):
@@ -64,12 +64,14 @@ func desactivate_dialog_btns():
 		Globals.has_painted_building = false
 
 	var c = null
-	if Globals.state == State.SELL:
+	if Globals.sell_mode:
 		c = Callable(map_node,"erase_building")
-	if Globals.state == State.EXPANSE:
+	if Globals.expanse_mode:
 		c = Callable(map_node,"buy_expansion")
 
 	get_node("HUD").disconnect_dialog_buttons(c)
+
+
 
 func paint_building(rects_array: Array, pos: Vector2i, color):
 	for cell in rects_array:

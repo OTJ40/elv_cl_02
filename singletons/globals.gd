@@ -10,3 +10,9 @@ var directions = [
 var state
 var has_lands_preview
 var has_painted_building
+
+var build_mode
+var sell_mode
+var move_mode
+var drag_mode
+var expanse_mode

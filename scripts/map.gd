@@ -17,7 +17,7 @@ var build_type: String
 var build_location: Vector2i
 var place_valid: bool
 var ui
-var move_and_expanse = false
+#var move_and_expanse = false
 
 
 
@@ -25,6 +25,8 @@ func _ready() -> void:
 	ui = get_parent().get_node("UI")
 	SignalBus.build_mode_activated.connect(_set_build_state)
 
+func _process(delta: float) -> void:
+	print(place_valid)
 
 
 func update_building_preview():
@@ -156,18 +158,18 @@ func place_building():
 		
 		var connected
 		if build_type == "Road":
-			connected = get_connected_for_position(Vector2i(build_location)/32)
+			connected = get_connected_R_for_position(Vector2i(build_location)/32)
 			# if move maybe connected not true???
 			if connected:
 				change_connected_in_updated_road_tree(Vector2i(build_location)/32,connected)
 		else:
-			for tile in get_atlas_positions_array(building_atlas,Vector2i(build_location)/32):
-				for n in get_neighbors_for_position(tile):
+			for cell in get_atlas_positions_array(building_atlas,Vector2i(build_location)/32):
+				for n in get_neighbors_for_position(cell):
 					if get_atlas_positions_array(building_atlas,Vector2i(build_location)/32).has(n):
 						continue
 					else:
 						if get_type_from_buildings_data_array(n) == "Road":
-							if get_connected_for_position(n):
+							if get_connected_R_for_position(n):
 								connected = true
 			if !connected:
 				connected = false
@@ -192,6 +194,9 @@ func place_building():
 					
 		buildings_data_array.append(dict)
 		file_manager.save_to_file("buildings_data", buildings_data_array)
+		if Globals.drag_mode:
+			place_valid = false
+			get_parent().cancel_drag_mode()
 
 
 func change_connected_in_updated_road_tree(pos, bull):
@@ -209,9 +214,7 @@ func change_connected_in_updated_road_tree(pos, bull):
 
 func check_neighbor_buildings(pos, bull):
 	for n in get_neighbors_for_position(pos):
-#		print($Buildings.get_cell_source_id(0,n))
-		if $Buildings.get_cell_source_id(0,n) > 1:
-#			if get_type_from_buildings_data_array(n) != "Road" and get_type_from_buildings_data_array(n) != "Main_Hall":
+		if building_type_not_road_or_main_hall(n):
 			change_connected_in_buildings_data_array(n,bull)
 
 
@@ -222,7 +225,7 @@ func change_connected_in_buildings_data_array(pos,bull):
 				item["connected"] = bull
 
 
-func get_connected_for_position(pos) -> bool:
+func get_connected_R_for_position(pos) -> bool:
 	var road_tree = [pos]
 	recursive_collecting_roads(pos, road_tree)
 #	print(road_tree)
@@ -271,23 +274,49 @@ func selling_building():
 			for item in buildings_data_array:
 				for cell in item["atlas"]:
 					if current_tile == cell + item["base"]:
-#						print(item["type"],BuildingType[item["type"]])
 						ui.show_sell_dialog(item)
 
 
 func erase_building(btn_name, dict):
-	print(dict)
+#	print(dict)
 	if btn_name == "Yes":
-		buildings_data_array.erase(dict)
 		# if road for every neighbor find roadtree and check for connection to mh
+		buildings_data_array.erase(dict)
+		if dict["type"] == "Road":
+			for n in get_neighbors_for_position(dict["base"]):
+				if $Buildings.get_cell_source_id(0,n) == BuildingType.ROAD:
+					if !get_connected_R_for_position(n):
+						change_connected_in_updated_road_tree(n, false)
+				elif building_type_not_road_or_main_hall(n):
+					var building_dict = get_item_from_buildings_data_array_by_position(n)
+					building_dict["connected"] = false
+					for cell in get_atlas_positions_array(building_dict["atlas"],building_dict["base"]):
+						for nei in get_neighbors_for_position(cell):
+							if get_atlas_positions_array(building_dict["atlas"],building_dict["base"]).has(nei):
+								continue
+							else:
+								if get_type_from_buildings_data_array(nei) == "Road":
+									if get_connected_R_for_position(nei):
+										building_dict["connected"] = true
+					if !building_dict["connected"]:
+						building_dict["connected"] = false
+								# go round about the building to find if it has connection w road
+		
 		file_manager.save_to_file("buildings_data", buildings_data_array)
 		for cell in dict["atlas"]:
 			$Buildings.erase_cell(0, cell + dict["base"])
-#		update_map()
+		update_map()
 		ui.desactivate_dialog_btns()
 	elif btn_name == "No":
 		ui.desactivate_dialog_btns()
 
+
+func get_item_from_buildings_data_array_by_position(pos) -> Dictionary:
+	for item in buildings_data_array:
+		for cell in get_atlas_positions_array(item["atlas"],item["base"]):
+			if cell == pos:
+				return item
+	return {}
 
 
 func choose_expansion_land():
@@ -309,22 +338,45 @@ func buy_expansion(btn_name, dict):
 		ui.desactivate_dialog_btns()
 	elif btn_name == "No":
 		ui.desactivate_dialog_btns()
-		if move_and_expanse:
-			Globals.state = State.MOVE
-			move_and_expanse = false
+#		if move_and_expanse:
+#			Globals.state = State.MOVE
+#			move_and_expanse = false
 
 
 func move_or_expanse():
 	var current_cell = $Buildings.local_to_map(get_global_mouse_position())
 #	var cell_pos = Vector2i($Buildings.map_to_local(current_cell))
 	if $Buildings.get_used_cells(0).has(current_cell): # move
-		pass
+		if $Buildings.get_cell_source_id(0, current_cell) == BuildingType.ROAD:
+			for item in buildings_data_array:
+				if current_cell == item["base"]:
+#					Globals.move_mode = false
+					Globals.drag_mode = true
+#					print(Globals.drag_mode)
+					ui._set_building_preview(item["type"],get_global_mouse_position())
+					erase_building("Yes",item)
+					build_type = item["type"]
+#					print(Globals.state)
+		else:
+			for item in buildings_data_array:
+				for cell in get_atlas_positions_array(item["atlas"],item["base"]):
+					if current_cell == cell:
+						Globals.drag_mode = true
+						ui.paint_building(item["atlas"],item["base"],Color(0,0,1,0.5))
+						erase_building("Yes", item)
+						ui._set_building_preview(item["type"],get_global_mouse_position())
+						build_type = item["type"]
+						$Cells.visible = true
+						
+						
+						
 	elif has_point_in_for_sale_lands(current_cell):
-		move_and_expanse = true
+#		move_and_expanse = true
+		Globals.expanse_mode = true
 		var rect_for_sale = get_base_pos_of_rect_for_sale(current_cell)
 		ui.show_expansion_dialog(_get_atlas_array($Land.tile_set.get_source(1)), rect_for_sale)
-		Globals.state = State.EXPANSE
 		
+
 
 
 func load_from_buildings_data_file():
@@ -363,5 +415,9 @@ func _get_atlas_array(atlas: TileSetAtlasSource) -> Array:
 		result.append(atlas.get_tile_id(cell))
 	return result
 
+
+
+func building_type_not_road_or_main_hall(pos : Vector2i) -> bool:
+	return $Buildings.get_cell_source_id(0,pos) > 1
 
 
