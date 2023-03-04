@@ -31,9 +31,9 @@ func update_building_preview(new_pos, color):
 	get_node("BuildingPreview").position = new_pos
 	get_node("BuildingPreview/BuildingInstance").modulate = Color(color)
 
-func show_sell_dialog(dict):
+func show_sell_dialog(array,dict):
 	$HUD/Dialog/VBoxContainer/Label.text = "Sell "+ dict["type"]+"?"
-	paint_building(dict["atlas"],dict["base"],Color(1,0,0,0.7))
+	paint_building(array,Color(1,0,0,0.7))
 	modulate_ui(Color(1,1,1,0.3))
 	get_node("HUD/Dialog").visible = true
 	var callable = Callable(map_node,"erase_building")
@@ -41,7 +41,7 @@ func show_sell_dialog(dict):
 
 func show_expansion_dialog(array,rect_pos):
 	$HUD/Dialog/VBoxContainer/Label.text = "Buy Expansion?"
-	paint_building(array,rect_pos,Color(0,0,1,0.5))
+	paint_building(array,Color(0,0,1,0.5))
 	modulate_ui(Color(1,1,1,0.4))
 	get_node("HUD/Dialog").visible = true
 	var callable = Callable(map_node,"buy_expansion")
@@ -73,11 +73,11 @@ func desactivate_dialog_btns():
 
 
 
-func paint_building(rects_array: Array, pos: Vector2i, color):
+func paint_building(rects_array: Array, color):
 	for cell in rects_array:
 		var cr = ColorRect.new()
 		cr.size = Vector2i(32,32)
-		cr.position = (cell + pos)*32
+		cr.position = cell * 32
 		cr.modulate = color
 		cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		$ColoredRectangles.add_child(cr)
